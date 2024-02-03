@@ -1,5 +1,5 @@
 # CS50 TSE
-## Student name (GitHub username)
+## Chu Hui Ong (PriscillaOng12)
 
 The assignment and Specs are in a [public repo](https://github.com/CS50DartmouthWI24/labs/tse).
 Do not clone that repo; view it on GitHub.
