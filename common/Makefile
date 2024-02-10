@@ -3,8 +3,8 @@
 # with a clean target that removes files produced by Make
  
 # PROG = pagedir
-OBJS = pagedir.o 
-LIBS = ../libcs50/libcs50.a
+OBJS = pagedir.o index.o
+LIBS = ../libcs50/libcs50-given.a
 LIB = common.a
 
 # uncomment the following to turn on verbose memory logging
@@ -17,9 +17,10 @@ MAKE = make
 $(LIB): $(OBJS)
 	ar cr $(LIB) $(OBJS)
 
-# common.o: ../libcs50/libcs50.a pagedir.h
+# common.o: ../libcs50/libcs50-given.a pagedir.h
 # readline.o: ../libcs50/readlinep.h
 pagedir.o: pagedir.h
+index.o: index.h
 
 
 .PHONY: test valgrind clean

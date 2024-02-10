@@ -1,0 +1,489 @@
+ml () {  module ml "$@"
+}
+module () {  _module_raw "$@" 2>&1
+}
+_module_raw () {  eval `/usr/bin/tclsh8.6 /usr/lib/x86_64-linux-gnu/modulecmd.tcl bash "$@"`;
+ _mlstatus=$?;
+ return $_mlstatus
+}
+
+echo "Integration testing for indexer module."
+Integration testing for indexer module.
+echo 
+
+echo "=========================================================="
+==========================================================
+echo
+
+echo "Testing indexer (error-handling)"
+Testing indexer (error-handling)
+
+echo "Error-handling: Insufficient arguments"
+Error-handling: Insufficient arguments
+# no arguments
+echo -e "\ntesting with no arguments"
+
+testing with no arguments
+./indexer
+ERROR: Expected 2 arguments but recieved 0
+echo
+
+
+# one argument
+echo -e "\ntesting with one argument"
+
+testing with one argument
+./indexer ../tse-output/letters-depth-1
+ERROR: Expected 2 arguments but recieved 1
+echo
+
+
+echo "Error-handling: Too many arguments"
+Error-handling: Too many arguments
+# three or more arguments
+echo -e "\ntesting with three or more arguments"
+
+testing with three or more arguments
+./indexer ../tse-output/letters-depth-1 arg2 arg3
+ERROR: Expected 2 arguments but recieved 3
+./indexer ../tse-output/letters-depth-2 arg2 arg3 arg4 arg5 arg6
+ERROR: Expected 2 arguments but recieved 6
+echo
+
+
+echo "Error-handling: Testing indexer on invalid pagedirectory"
+Error-handling: Testing indexer on invalid pagedirectory
+# non-existent path
+echo -e "\ntesting with invalid pageDirectory (non-existent path)"
+
+testing with invalid pageDirectory (non-existent path)
+./indexer ../tse-output/letters-depth-9 ../tse-output/letters-depth-9/index.ndx
+ERROR: Crawler directory marker ../tse-output/letters-depth-9/.crawler not found!
+echo
+
+
+# not a crawler directory
+echo -e "\ntesting with invalid pageDirectory (not a crawler directory)"
+
+testing with invalid pageDirectory (not a crawler directory)
+mkdir ../tse-output/not_crawler
+mkdir: cannot create directory '../tse-output/not_crawler': File exists
+touch ../tse-output/not_crawler/not_crawled.txt
+./indexer ../tse-output/not_crawler ../tse-output/not_crawler/index.ndx
+ERROR: Crawler directory marker ../tse-output/not_crawler/.crawler not found!
+# check if extra file created
+FILE=../tse-output/not_crawler/index.ndx
+if [[ -f "$FILE" ]]; then
+    echo -e "\nERROR: $FILE created"
+fi
+# cleanup directory
+# rm -r ../tse-output/not_crawler
+echo
+
+
+# invalid indexFile (non-existent path)
+echo -e "\ntesting with invalid indexFile (non-existent path)"
+
+testing with invalid indexFile (non-existent path)
+./indexer ../tse-output/letters-depth-1 ../tse-output/letters-depth-100/index.ndx
+ERROR: Cannot write to ../tse-output/letters-depth-100/index.ndx
+echo
+
+
+# invalid indexFile (read-only directory)
+echo -e "\ntesting with invalid indexFile (read-only directory)"
+
+testing with invalid indexFile (read-only directory)
+chmod -w ../tse-output/letters-depth-1
+./indexer ../tse-output/letters-depth-1 ../tse-output/letters-depth-1/index.ndx
+# reset permissions
+chmod +w ../tse-output/letters-depth-1
+echo
+
+
+# invalid indexFile (existing, read-only file)
+echo -e "\ntesting with invalid indexFile (existing, read-only file)"
+
+testing with invalid indexFile (existing, read-only file)
+touch ../tse-output/letters-depth-1/index.ndx
+chmod -w ../tse-output/letters-depth-1/index.ndx
+./indexer ../tse-output/letters-depth-1 ../tse-output/letters-depth-1/index.ndx
+ERROR: Cannot write to ../tse-output/letters-depth-1/index.ndx
+# reset permissions
+chmod +w ../tse-output/letters-depth-1/index.ndx
+# rm ../tse-output/letters-depth-1/index.ndx
+echo
+
+
+### Test indexer on several valid pageDirectories, validated by indextest ###
+echo "Testing indexer on letters at depth 0, 1, 2, 3, 4"
+Testing indexer on letters at depth 0, 1, 2, 3, 4
+echo "Testing indexer on letters at depth 0 file"
+Testing indexer on letters at depth 0 file
+echo -e "\ntesting on pageDirectory ../tse-output/letters-depth-0 ..."
+
+testing on pageDirectory ../tse-output/letters-depth-0 ...
+./indexer ../tse-output/letters-depth-0 ../tse-output/letters-depth-0/index.ndx
+./indextest ../tse-output/letters-depth-0/index.ndx ../tse-output/letters-depth-0/index_new.ndx
+var="$(diff <(sort ../tse-output/letters-depth-0/index.ndx) <(sort ../tse-output/letters-depth-0/index_new.ndx))"
+if [ -z "$var" ]
+then
+      echo -e "\noutput matches!"
+else
+      echo -e "\nError: OUTPUT DOES NOT MATCH"
+fi
+
+output matches!
+# cleanup
+# rm ../tse-output/letters-depth-0/index.ndx ../tse-output/letters-depth-0/index_new.ndx
+echo
+
+
+echo "Testing indexer on letters at depth 1 file"
+Testing indexer on letters at depth 1 file
+echo -e "\ntesting on pageDirectory ../tse-output/letters-depth-1 ..."
+
+testing on pageDirectory ../tse-output/letters-depth-1 ...
+./indexer ../tse-output/letters-depth-1 ../tse-output/letters-depth-1/index.ndx
+./indextest ../tse-output/letters-depth-1/index.ndx ../tse-output/letters-depth-1/index_new.ndx
+var="$(diff <(sort ../tse-output/letters-depth-1/index.ndx) <(sort ../tse-output/letters-depth-1/index_new.ndx))"
+if [ -z "$var" ]
+then
+      echo -e "\noutput matches!"
+else
+      echo -e "\nError: OUTPUT DOES NOT MATCH"
+fi
+
+output matches!
+# cleanup
+# rm ../tse-output/letters-depth-1/index.ndx ../tse-output/letters-depth-1/index_new.ndx
+echo
+
+
+echo "Testing indexer on letters at depth 2 file"
+Testing indexer on letters at depth 2 file
+echo -e "\ntesting on pageDirectory ../tse-output/letters-depth-2 ..."
+
+testing on pageDirectory ../tse-output/letters-depth-2 ...
+./indexer ../tse-output/letters-depth-2 ../tse-output/letters-depth-2/index.ndx
+./indextest ../tse-output/letters-depth-2/index.ndx ../tse-output/letters-depth-2/index_new.ndx
+var="$(diff <(sort ../tse-output/letters-depth-2/index.ndx) <(sort ../tse-output/letters-depth-2/index_new.ndx))"
+if [ -z "$var" ]
+then
+      echo -e "\noutput matches!"
+else
+      echo -e "\nOUTPUT DOES NOT MATCH"
+fi
+
+output matches!
+# cleanup
+# rm ../tse-output/letters-depth-2/index.ndx ../tse-output/letters-depth-2/index_new.ndx
+echo
+
+
+echo "Testing indexer on letters at depth 3 file"
+Testing indexer on letters at depth 3 file
+echo -e "\ntesting on pageDirectory ../tse-output/letters-depth-3 ..."
+
+testing on pageDirectory ../tse-output/letters-depth-3 ...
+./indexer ../tse-output/letters-depth-3 ../tse-output/letters-depth-3/index.ndx
+./indextest ../tse-output/letters-depth-3/index.ndx ../tse-output/letters-depth-3/index_new.ndx
+var="$(diff <(sort ../tse-output/letters-depth-3/index.ndx) <(sort ../tse-output/letters-depth-3/index_new.ndx))"
+if [ -z "$var" ]
+then
+      echo -e "\noutput matches!"
+else
+      echo -e "\nOUTPUT DOES NOT MATCH"
+fi
+
+output matches!
+# cleanup
+# rm ../tse-output/letters-depth-3/index.ndx ../tse-output/letters-depth-3/index_new.ndx
+echo
+
+
+
+echo "Testing indexer on letters at depth 4 file"
+Testing indexer on letters at depth 4 file
+echo -e "\ntesting on pageDirectory ../tse-output/letters-depth-4 ..."
+
+testing on pageDirectory ../tse-output/letters-depth-4 ...
+./indexer ../tse-output/letters-depth-4 ../tse-output/letters-depth-4/index.ndx
+./indextest ../tse-output/letters-depth-4/index.ndx ../tse-output/letters-depth-4/index_new.ndx
+var="$(diff <(sort ../tse-output/letters-depth-4/index.ndx) <(sort ../tse-output/letters-depth-4/index_new.ndx))"
+if [ -z "$var" ]
+then
+      echo -e "\noutput matches!"
+else
+      echo -e "\nOUTPUT DOES NOT MATCH"
+fi
+
+output matches!
+# cleanup
+# rm ../tse-output/letters-depth-4/index.ndx ../tse-output/letters-depth-4/index_new.ndx
+echo
+
+
+# Run valgrind on both indexer and indextest to ensure no memory leaks or errors 
+echo -e "\nTest for memory leaks on letters at depth 0 file"
+
+Test for memory leaks on letters at depth 0 file
+echo -e "\nrunning valgrind in indexer to check for memory leaks"
+
+running valgrind in indexer to check for memory leaks
+valgrind --leak-check=full --show-leak-kinds=all -s ./indexer ../tse-output/letters-depth-0 ../tse-output/letters-depth-0/index.ndx
+==2902573== Memcheck, a memory error detector
+==2902573== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==2902573== Using Valgrind-3.18.1 and LibVEX; rerun with -h for copyright info
+==2902573== Command: ./indexer ../tse-output/letters-depth-0 ../tse-output/letters-depth-0/index.ndx
+==2902573== 
+==2902573== 
+==2902573== HEAP SUMMARY:
+==2902573==     in use at exit: 0 bytes in 0 blocks
+==2902573==   total heap usage: 252 allocs, 252 frees, 22,145 bytes allocated
+==2902573== 
+==2902573== All heap blocks were freed -- no leaks are possible
+==2902573== 
+==2902573== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+echo -e "\nrunning valgrind in indextest to check for memory leaks"
+
+running valgrind in indextest to check for memory leaks
+valgrind --leak-check=full --show-leak-kinds=all -s ./indextest ../tse-output/letters-depth-0/index.ndx ../tse-output/letters-depth-0/index_new.ndx
+==2902585== Memcheck, a memory error detector
+==2902585== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==2902585== Using Valgrind-3.18.1 and LibVEX; rerun with -h for copyright info
+==2902585== Command: ./indextest ../tse-output/letters-depth-0/index.ndx ../tse-output/letters-depth-0/index_new.ndx
+==2902585== 
+==2902585== 
+==2902585== HEAP SUMMARY:
+==2902585==     in use at exit: 38 bytes in 7 blocks
+==2902585==   total heap usage: 51 allocs, 44 frees, 26,540 bytes allocated
+==2902585== 
+==2902585== 38 bytes in 7 blocks are definitely lost in loss record 1 of 1
+==2902585==    at 0x4848899: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==2902585==    by 0x109647: index_load (index.c:105)
+==2902585==    by 0x109E7F: main (indextest.c:57)
+==2902585== 
+==2902585== LEAK SUMMARY:
+==2902585==    definitely lost: 38 bytes in 7 blocks
+==2902585==    indirectly lost: 0 bytes in 0 blocks
+==2902585==      possibly lost: 0 bytes in 0 blocks
+==2902585==    still reachable: 0 bytes in 0 blocks
+==2902585==         suppressed: 0 bytes in 0 blocks
+==2902585== 
+==2902585== ERROR SUMMARY: 1 errors from 1 contexts (suppressed: 0 from 0)
+# cleanup
+# rm ../tse-output/letters-depth-0/index.ndx ../tse-output/letters-depth-0/index_new.ndx
+echo
+
+
+echo -e "\nTest for memory leaks on letters at depth 1 file"
+
+Test for memory leaks on letters at depth 1 file
+echo -e "\nrunning valgrind in indexer to check for memory leaks"
+
+running valgrind in indexer to check for memory leaks
+valgrind --leak-check=full --show-leak-kinds=all -s ./indexer ../tse-output/letters-depth-1 ../tse-output/letters-depth-1/index.ndx
+==2902600== Memcheck, a memory error detector
+==2902600== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==2902600== Using Valgrind-3.18.1 and LibVEX; rerun with -h for copyright info
+==2902600== Command: ./indexer ../tse-output/letters-depth-1 ../tse-output/letters-depth-1/index.ndx
+==2902600== 
+==2902600== 
+==2902600== HEAP SUMMARY:
+==2902600==     in use at exit: 0 bytes in 0 blocks
+==2902600==   total heap usage: 270 allocs, 270 frees, 31,197 bytes allocated
+==2902600== 
+==2902600== All heap blocks were freed -- no leaks are possible
+==2902600== 
+==2902600== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+echo -e "\nrunning valgrind in indextest to check for memory leaks"
+
+running valgrind in indextest to check for memory leaks
+valgrind --leak-check=full --show-leak-kinds=all -s ./indextest ../tse-output/letters-depth-1/index.ndx ../tse-output/letters-depth-1/index_new.ndx
+==2902622== Memcheck, a memory error detector
+==2902622== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==2902622== Using Valgrind-3.18.1 and LibVEX; rerun with -h for copyright info
+==2902622== Command: ./indextest ../tse-output/letters-depth-1/index.ndx ../tse-output/letters-depth-1/index_new.ndx
+==2902622== 
+==2902622== 
+==2902622== HEAP SUMMARY:
+==2902622==     in use at exit: 48 bytes in 8 blocks
+==2902622==   total heap usage: 59 allocs, 51 frees, 26,656 bytes allocated
+==2902622== 
+==2902622== 48 bytes in 8 blocks are definitely lost in loss record 1 of 1
+==2902622==    at 0x4848899: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==2902622==    by 0x109647: index_load (index.c:105)
+==2902622==    by 0x109E7F: main (indextest.c:57)
+==2902622== 
+==2902622== LEAK SUMMARY:
+==2902622==    definitely lost: 48 bytes in 8 blocks
+==2902622==    indirectly lost: 0 bytes in 0 blocks
+==2902622==      possibly lost: 0 bytes in 0 blocks
+==2902622==    still reachable: 0 bytes in 0 blocks
+==2902622==         suppressed: 0 bytes in 0 blocks
+==2902622== 
+==2902622== ERROR SUMMARY: 1 errors from 1 contexts (suppressed: 0 from 0)
+# cleanup
+# rm ../tse-output/letters-depth-1/index.ndx ../tse-output/letters-depth-1/index_new.ndx
+echo
+
+
+echo -e "\nTest for memory leaks on letters at depth 2 file"
+
+Test for memory leaks on letters at depth 2 file
+echo -e "\nrunning valgrind in indexer to check for memory leaks"
+
+running valgrind in indexer to check for memory leaks
+valgrind --leak-check=full --show-leak-kinds=all -s ./indexer ../tse-output/letters-depth-2 ../tse-output/letters-depth-2/index.ndx
+==2902642== Memcheck, a memory error detector
+==2902642== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==2902642== Using Valgrind-3.18.1 and LibVEX; rerun with -h for copyright info
+==2902642== Command: ./indexer ../tse-output/letters-depth-2 ../tse-output/letters-depth-2/index.ndx
+==2902642== 
+==2902642== 
+==2902642== HEAP SUMMARY:
+==2902642==     in use at exit: 0 bytes in 0 blocks
+==2902642==   total heap usage: 300 allocs, 300 frees, 40,435 bytes allocated
+==2902642== 
+==2902642== All heap blocks were freed -- no leaks are possible
+==2902642== 
+==2902642== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+echo -e "\nrunning valgrind in indextest to check for memory leaks"
+
+running valgrind in indextest to check for memory leaks
+valgrind --leak-check=full --show-leak-kinds=all -s ./indextest ../tse-output/letters-depth-2/index.ndx ../tse-output/letters-depth-2/index_new.ndx
+==2902685== Memcheck, a memory error detector
+==2902685== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==2902685== Using Valgrind-3.18.1 and LibVEX; rerun with -h for copyright info
+==2902685== Command: ./indextest ../tse-output/letters-depth-2/index.ndx ../tse-output/letters-depth-2/index_new.ndx
+==2902685== 
+==2902685== 
+==2902685== HEAP SUMMARY:
+==2902685==     in use at exit: 69 bytes in 11 blocks
+==2902685==   total heap usage: 79 allocs, 68 frees, 26,922 bytes allocated
+==2902685== 
+==2902685== 69 bytes in 11 blocks are definitely lost in loss record 1 of 1
+==2902685==    at 0x4848899: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==2902685==    by 0x109647: index_load (index.c:105)
+==2902685==    by 0x109E7F: main (indextest.c:57)
+==2902685== 
+==2902685== LEAK SUMMARY:
+==2902685==    definitely lost: 69 bytes in 11 blocks
+==2902685==    indirectly lost: 0 bytes in 0 blocks
+==2902685==      possibly lost: 0 bytes in 0 blocks
+==2902685==    still reachable: 0 bytes in 0 blocks
+==2902685==         suppressed: 0 bytes in 0 blocks
+==2902685== 
+==2902685== ERROR SUMMARY: 1 errors from 1 contexts (suppressed: 0 from 0)
+# cleanup
+# rm ../tse-output/letters-depth-2/index.ndx ../tse-output/letters-depth-2/index_new.ndx
+echo
+
+
+echo -e "\nTest for memory leaks on letters at depth 3 file"
+
+Test for memory leaks on letters at depth 3 file
+echo -e "\nrunning valgrind in indexer to check for memory leaks"
+
+running valgrind in indexer to check for memory leaks
+valgrind --leak-check=full --show-leak-kinds=all -s ./indexer ../tse-output/letters-depth-3 ../tse-output/letters-depth-3/index.ndx
+==2902687== Memcheck, a memory error detector
+==2902687== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==2902687== Using Valgrind-3.18.1 and LibVEX; rerun with -h for copyright info
+==2902687== Command: ./indexer ../tse-output/letters-depth-3 ../tse-output/letters-depth-3/index.ndx
+==2902687== 
+==2902687== 
+==2902687== HEAP SUMMARY:
+==2902687==     in use at exit: 0 bytes in 0 blocks
+==2902687==   total heap usage: 364 allocs, 364 frees, 67,749 bytes allocated
+==2902687== 
+==2902687== All heap blocks were freed -- no leaks are possible
+==2902687== 
+==2902687== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+echo -e "\nrunning valgrind in indextest to check for memory leaks"
+
+running valgrind in indextest to check for memory leaks
+valgrind --leak-check=full --show-leak-kinds=all -s ./indextest ../tse-output/letters-depth-3/index.ndx ../tse-output/letters-depth-3/index_new.ndx
+==2902716== Memcheck, a memory error detector
+==2902716== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==2902716== Using Valgrind-3.18.1 and LibVEX; rerun with -h for copyright info
+==2902716== Command: ./indextest ../tse-output/letters-depth-3/index.ndx ../tse-output/letters-depth-3/index_new.ndx
+==2902716== 
+==2902716== 
+==2902716== HEAP SUMMARY:
+==2902716==     in use at exit: 103 bytes in 15 blocks
+==2902716==   total heap usage: 111 allocs, 96 frees, 27,374 bytes allocated
+==2902716== 
+==2902716== 103 bytes in 15 blocks are definitely lost in loss record 1 of 1
+==2902716==    at 0x4848899: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==2902716==    by 0x109647: index_load (index.c:105)
+==2902716==    by 0x109E7F: main (indextest.c:57)
+==2902716== 
+==2902716== LEAK SUMMARY:
+==2902716==    definitely lost: 103 bytes in 15 blocks
+==2902716==    indirectly lost: 0 bytes in 0 blocks
+==2902716==      possibly lost: 0 bytes in 0 blocks
+==2902716==    still reachable: 0 bytes in 0 blocks
+==2902716==         suppressed: 0 bytes in 0 blocks
+==2902716== 
+==2902716== ERROR SUMMARY: 1 errors from 1 contexts (suppressed: 0 from 0)
+# cleanup
+# rm ../tse-output/letters-depth-3/index.ndx ../tse-output/letters-depth-3/index_new.ndx
+echo
+
+
+echo -e "\nTest for memory leaks on letters at depth 4 file"
+
+Test for memory leaks on letters at depth 4 file
+echo -e "\nrunning valgrind in indexer to check for memory leaks"
+
+running valgrind in indexer to check for memory leaks
+valgrind --leak-check=full --show-leak-kinds=all -s ./indexer ../tse-output/letters-depth-4 ../tse-output/letters-depth-4/index.ndx
+==2902717== Memcheck, a memory error detector
+==2902717== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==2902717== Using Valgrind-3.18.1 and LibVEX; rerun with -h for copyright info
+==2902717== Command: ./indexer ../tse-output/letters-depth-4 ../tse-output/letters-depth-4/index.ndx
+==2902717== 
+==2902717== 
+==2902717== HEAP SUMMARY:
+==2902717==     in use at exit: 0 bytes in 0 blocks
+==2902717==   total heap usage: 415 allocs, 415 frees, 86,073 bytes allocated
+==2902717== 
+==2902717== All heap blocks were freed -- no leaks are possible
+==2902717== 
+==2902717== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+echo -e "\nrunning valgrind in indextest to check for memory leaks"
+
+running valgrind in indextest to check for memory leaks
+valgrind --leak-check=full --show-leak-kinds=all -s ./indextest ../tse-output/letters-depth-4/index.ndx ../tse-output/letters-depth-4/index_new.ndx
+==2902718== Memcheck, a memory error detector
+==2902718== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==2902718== Using Valgrind-3.18.1 and LibVEX; rerun with -h for copyright info
+==2902718== Command: ./indextest ../tse-output/letters-depth-4/index.ndx ../tse-output/letters-depth-4/index_new.ndx
+==2902718== 
+==2902718== 
+==2902718== HEAP SUMMARY:
+==2902718==     in use at exit: 142 bytes in 20 blocks
+==2902718==   total heap usage: 145 allocs, 125 frees, 27,836 bytes allocated
+==2902718== 
+==2902718== 142 bytes in 20 blocks are definitely lost in loss record 1 of 1
+==2902718==    at 0x4848899: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==2902718==    by 0x109647: index_load (index.c:105)
+==2902718==    by 0x109E7F: main (indextest.c:57)
+==2902718== 
+==2902718== LEAK SUMMARY:
+==2902718==    definitely lost: 142 bytes in 20 blocks
+==2902718==    indirectly lost: 0 bytes in 0 blocks
+==2902718==      possibly lost: 0 bytes in 0 blocks
+==2902718==    still reachable: 0 bytes in 0 blocks
+==2902718==         suppressed: 0 bytes in 0 blocks
+==2902718== 
+==2902718== ERROR SUMMARY: 1 errors from 1 contexts (suppressed: 0 from 0)
+# cleanup
+# rm ../tse-output/letters-depth-4/index.ndx ../tse-output/letters-depth-4/index_new.ndx
+echo
+
+
+
+
