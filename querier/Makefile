@@ -52,6 +52,6 @@ clean:
 	rm -f querier
 	rm -f fuzzquery
 	rm -f core
-	# rm -f {letters,toscrape,wikipedia}-*-{basic,fuzzquery}-test.out  # Remove test output files
+	rm -f {letters,toscrape,wikipedia}-*-{basic,fuzzquery}-test.out  # Remove test output files
 
 
