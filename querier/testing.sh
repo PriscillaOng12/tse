@@ -172,8 +172,8 @@ valgrind --leak-check=full --show-leak-kinds=all -s ./querier ../../shared/tse/o
 echo -e "\nrunning valgrind in querier for toscrape at depth 3 to check for memory leaks"
 valgrind --leak-check=full --show-leak-kinds=all -s ./querier ../../shared/tse/output/toscrape-3 ../../shared/tse/output/toscrape-3.index < BASIC_TEST
 
-echo -e "\nrunning valgrind in querier for wikipedia at depth 1 to check for memory leaks"
-valgrind --leak-check=full --show-leak-kinds=all -s ./querier ../../shared/tse/output/wikipedia-1 ../../shared/tse/output/wikipedia-1.index < BASIC_TEST
+echo -e "\nrunning valgrind in querier for wikipedia at depth 2 to check for memory leaks"
+valgrind --leak-check=full --show-leak-kinds=all -s ./querier ../../shared/tse/output/wikipedia-2 ../../shared/tse/output/wikipedia-2.index < BASIC_TEST
 
 
 
