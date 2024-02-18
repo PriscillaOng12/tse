@@ -13,252 +13,239 @@
  */
 
 #include <stdlib.h>
+#include <stdbool.h>
+#include <stdio.h>
 #include <string.h>
-#include "webpage.h"
+#include "word.h"
 #include "hashtable.h"
 #include "counters.h"
-#include "file.h"
+#include "math.h"
 #include "mem.h"
+#include "index.h"
+#include "file.h"
 
-/**************** global types ****************/
-typedef struct index {
-    hashtable_t* table;
-} index_t;
-
+/* extends to hashtable struct type into an index_t type */
+typedef struct hashtable index_t;
 
 /**************** global functions ****************/
-index_t* index_new(const int size);
-void index_save(index_t* index, char* indexFilename);
-void index_load(index_t* index, char* indexFilename);
-void index_delete(index_t* index);
-void index_search(index_t* index, char** words, int* scores, int numDocs, int numWords);
+index_t *indexInit(const int slots);
+int indexAdd(index_t *index, const char *word, const int docID);
+counters_t *indexFind(index_t *index, const char *word);
+int indexUpdate(index_t *index, const char *word, const int docID, const int freq);
+index_t *indexLoad(const char* fn);
+void indexDelete(index_t *index); 
+void indexSave(index_t *index, const char *fn);
 
-counters_t* index_find(index_t* index, char* key);
-bool index_add(index_t* index, char* key, int docID);
-int num_docs_crawled(char* pageDirectory);
-
-static void index_itr(void* fp, const char* key, void* item);
-static void index_itr_helper(void* fp, const int key, const int count);
-static void index_delete_helper(void* item);
-
-#define DOC_ID_MAX_LEN 20 // Assuming 20 is an adequate length
+// Forward declarations for local helper functions
+static void printIndexRow(void *fp, const char *key, void *value);
+static void printCounter(void *fp, const int key, const int value);
+static char *getWordInLine(const char *line, int *pos);
 
 
-/**************** local functions ****************/
+/* Initialize an index with a specified number of slots */
+index_t *indexInit(const int slots) {
+    if (slots <= 0) return NULL;
+    index_t *index = (index_t *) hashtable_new(slots);
+    return index;
+}
 
-/**************** index_new() ****************/
-index_t* 
-index_new(const int size)
-{   
-    if (size <= 0) {
+/* Add or update a word's count for a specific document in the index */
+int indexAdd(index_t *index, const char *word, const int docID) {
+    if (index == NULL || word  == NULL || docID < 1) {  // validate arguments
+        return -1;
+    }
+    if (normalizeWord((char *) word) != 0) {    // normalize word
+        return -1;
+    }
+    hashtable_t *table = (hashtable_t *) index; // cast index into hashtable
+    counters_t *counters = (counters_t *) hashtable_find(table, word);  // find the counters for word in index
+    bool insertAfter = false;
+    if (counters == NULL) {
+        counters = counters_new(); // make new caounter if not found
+        if (counters == NULL) {
+            return -1;
+        }
+        insertAfter = true;     // flag to insert counter into table
+    }
+    if (counters_add(counters, docID) < 1) {    // add docid instance to counters
+        return -1;
+    }
+    if (insertAfter) {
+        if (!hashtable_insert(table, word, (void *) counters)) {
+            return -1;
+        }
+    }
+    return 0;
+}
+
+
+/* Find the counters set associated with a word in the index */
+counters_t *indexFind(index_t *index, const char *word) {
+    if (index == NULL || word == NULL) {    // validate args
         return NULL;
     }
-    // allocate memory for array of pointers
-    index_t* index = mem_malloc(sizeof(index_t));
+    if (normalizeWord((char *) word) != 0) {    // normalize word
+        return NULL;
+    }
+    hashtable_t *table = (hashtable_t *) index;
+    counters_t *counters = (counters_t *) hashtable_find(table, word); // find counters for word
+    return counters;    // return counter
+}
+
+/* Set a specific count for a word and document in the index */
+int indexUpdate(index_t *index, const char *word, const int docID, const int freq) {
+    if (index == NULL || word == NULL || docID < 1 || freq < 1) {   // validate args
+        return -1;
+    }
+    bool insertAfter = false;   // track if we need to insert counter into index
+    hashtable_t *table = (hashtable_t *) index;
+    counters_t *counters = (counters_t *) hashtable_find(table, word);  // get counters form index
+    if (counters == NULL) {
+        counters = counters_new();  // make a new counter if word not in index yet
+        if (counters == NULL) {
+            return -1;
+        }
+        insertAfter = true; //  note to insert counter into index
+    }
+    if (!counters_set(counters, docID, freq)) { // set value of docid in counters
+        return -1;
+    }
+    if (insertAfter) {  // insert counters into index
+        if (!hashtable_insert(table, word, (void *) counters)) {
+            return -1;
+        }
+    }
+    return 0;
+}
+
+/* Load an index from a file */
+index_t *indexLoad(const char* fn) {
+    if (fn == NULL) {   // validate arguments
+        return NULL;
+    }
+    index_t *index = indexInit(IndexCoeff); // get and index
     if (index == NULL) {
         return NULL;
-    } else {
-        // allocs mem
-        index->table = hashtable_new(size);
     }
-    
+    FILE *fp = fopen(fn, "r");  // open file in read mode
+    if (fp == NULL) {
+    }
+    char *line;
+    for (line = file_readLine(fp); line != NULL; line = file_readLine(fp)) {    // read line
+        int pos = 0;    // will be neeed by helper function to track position in line
+        char *word = getWordInLine(line, &pos);   // get a word from line (word is any contiguous charaters not includeing space and new lines and null)
+        if (word == NULL) {    // ensure word was got successfuly
+            mem_free(line);
+            return NULL;
+        }
+        for (char *token = getWordInLine(line, &pos); token != NULL; token = getWordInLine(line, &pos)) {
+            if (token == NULL) {    // ensure token was got
+                break;
+            }
+            int docID = atoi(token);    // convert to integer
+            if (docID < 1) {    // ensure conversion was successful
+                break;
+            }
+            mem_free(token);    // free token
+            token = getWordInLine(line, &pos);  // get next word (freq)
+            if (token == NULL) { // ensure token was got
+                break;
+            }
+            int freq = atoi(token);     // convert to integer
+            if (freq < 1) {  // ensure conversion was successful
+                break;
+            }
+            indexUpdate(index, word, docID, freq); // update index for word -> docID with freq
+            mem_free(token);
+        }
+        // free line and word
+        mem_free(line);
+        mem_free(word);
+    }
+    if (fp != stdin) {  // close file
+        fclose(fp);
+    }
     return index;
 }
 
 
-/**************** index_save() ****************/
-void index_save(index_t* index, char* indexFilename) {
-    if (index == NULL || index->table == NULL) {
-        fprintf(stderr, "ERROR: Null index or index table.\n");
+/* Clean up and delete an index */
+void indexDelete(index_t *index) {
+    if (index == NULL) {    // validate arguments
         return;
     }
+    hashtable_t *table = (hashtable_t *) index; // cast to hashtable
+    hashtable_delete(table, (void (*)(void *)) counters_delete);    // delete hashtable
+}
 
-    FILE* fp = fopen(indexFilename, "w");
-    if (fp == NULL) {
-        fprintf(stderr, "ERROR: Cannot write to %s\n", indexFilename);
+/* Save an index to a file */
+void indexSave(index_t *index, const char *fn) {
+    if (index == NULL || fn == NULL) {  // validate arguments
         return;
     }
-
-    hashtable_iterate(index->table, fp, index_itr);
-    fclose(fp);
-}
-
-/**************** index_load() ****************/
-void index_load(index_t* index, char* indexFilename) {
-    FILE* fp = fopen(indexFilename, "r");
+    FILE *fp;
+    if (strncmp(fn, "-", 1) == 0) { // saved file name for stdout
+        fp = stdout;
+    } else {
+        fp = fopen(fn, "w");    // open file in write mode
+    }
     if (fp == NULL) {
-        fprintf(stderr, "ERROR: Unable to open file: %s\n", indexFilename);
-        exit(3); // Consider changing this to return an error code instead of exiting.
+        return;
     }
+    hashtable_t *table = (hashtable_t *) index; // cast to hashtable
+    hashtable_iterate(table, fp, printIndexRow);    // iterate through index to get values and write to file
+    fclose(fp); // close file
+}
 
-    char line[1024]; // Assuming a single line won't exceed 1024 characters.
-    while (fgets(line, sizeof(line), fp) != NULL) {
-        // Trim newline character which fgets may include
-        line[strcspn(line, "\n")] = 0;
-
-        char* word = strtok(line, " ");
-        if (word == NULL) {
-            continue; // Skip empty lines.
-        }
-
-        // Manually duplicate the word
-        char* wordCopy = malloc(strlen(word) + 1); // Allocate memory for the word copy.
-        if (wordCopy == NULL) {
-            // Handle allocation failure if necessary.
-            continue;
-        }
-        strcpy(wordCopy, word); // Copy the word into the newly allocated memory.
-
-        counters_t* counter = counters_new();
-        if (counter == NULL) {
-            // Handle allocation failure if necessary.
-            free(wordCopy);
-            continue;
-        }
-
-        char* token;
-        int docID, count;
-        while ((token = strtok(NULL, " ")) != NULL) {
-            docID = atoi(token);
-            token = strtok(NULL, " ");
-            if (token == NULL) break; // In case of malformed line.
-            count = atoi(token);
-
-            counters_set(counter, docID, count); // Add docID, count pair to counter.
-        }
-
-        // Insert the word and its counter into the hashtable.
-        // If the word is already present, you might want to handle it (not shown here).
-        hashtable_insert(index->table, wordCopy, counter);
+/* Helper function to print a single index row */
+static void printIndexRow(void *fp, const char *key, void *value) {
+    if (fp == NULL || key == NULL || value == NULL) {   // validate arguments
+        return;
     }
-
-    fclose(fp);
-}
-
-
-/**************** index_delete() ****************/
-void index_delete(index_t* index) {
-    hashtable_delete(index->table, index_delete_helper);
-}
-
-static void index_delete_helper(void* item) {
-    counters_delete(item);
-}
-
-
-static void index_itr(void* arg, const char* key, void* item) {
-    FILE* fp = (FILE*)arg; // More explicit casting for clarity
-
-    // Print the word
-    fprintf(fp, "%s", key);
-
-    // Iterate through every docID, count pair
-    counters_iterate(item, fp, index_itr_helper);
-
-    // New line for every entry
+    counters_t *counters = (counters_t *) value;    // cast to couters
+    fprintf(fp, "%s ", key);
+    counters_iterate(counters, fp, printCounter);   // iterate counter t oget values and write to file
     fprintf(fp, "\n");
 }
 
-
-static void index_itr_helper(void* arg, const int key, const int count) {
-    FILE* fp = (FILE*)arg; // Explicit casting for clarity
-
-    // Add [docID, count] pair to index
-    fprintf(fp, " %d %d", key, count);
-}
-
-
-/**************** index_find() ****************/
-counters_t* 
-index_find(index_t* index, char* key)
-{
-    return hashtable_find(index->table, key);
-}
-
-/**************** index_add() ****************/
-bool index_add(index_t* index, char* key, int docID) {
-    if (index == NULL || key == NULL) {
-        return false;
+/* Helper function to print a counter using iterate */
+static void printCounter(void *fp, const int key, const int value) {
+    if (fp == NULL || key < 0 || value < 0) {   // validate  arguments
+        return;
     }
-
-    counters_t* counter = hashtable_find(index->table, key);
-    if (counter == NULL) {
-        counter = counters_new();
-        counters_add(counter, docID);
-        return hashtable_insert(index->table, key, counter);
-    } else {
-        return counters_add(counter, docID);
-    }
+    fprintf(fp, " %d %d", key, value);  // write values to file
 }
 
-
-/**************** index_search() ****************/
-void index_search(index_t* index, char** words, int* scores, int numDocs, int numWords) {
-    // Initialize scores array to zero
-    memset(scores, 0, sizeof(int) * numDocs);
-
-    int minScore = 0, curScore = 0;
-    bool withinAND = false, firstAND = true;
-
-    for (int i = 0; i < numWords; i++) {
-        if (strcmp(words[i], "and") == 0) {
-            // Switch to AND logic
-            withinAND = true;
-            if (!firstAND) {
-                // Add the minScore from previous AND segment to all docs and reset minScore
-                for (int d = 0; d < numDocs; d++) {
-                    scores[d] += minScore;
-                }
-                minScore = 0;
+/* Helper to get the next word in null terminated string line object starting from pos */
+static char *getWordInLine(const char *line, int *pos) {
+    if (line == NULL || pos == NULL) {  // validate arguments
+        return NULL;
+    }
+    if (*pos >= strlen(line)) { // check if start point is in range of string
+        return NULL;
+    }
+    int end = *pos;
+    bool startedWord = false;
+    for (; end < strlen(line); end++) { // loop till end of line
+        if (!startedWord) { // if start of a new word has not been found in line
+            if (line[end] == ' ' || line[end] == '\n') {    // if still not a new word
+                (*pos)++;   // increments starting position
+            } else {
+                startedWord = true; // note that a new word has been found
             }
-            firstAND = false;
-        } else if (strcmp(words[i], "or") == 0) {
-            // Switch to OR logic, add minScore from AND segment to all docs and reset
-            withinAND = false;
-            for (int d = 0; d < numDocs; d++) {
-                scores[d] += minScore;
-            }
-            minScore = 0;
-            firstAND = true; // Reset for the next AND segment
         } else {
-            // Process a word
-            counters_t* counter = index_find(index, words[i]);
-            if (counter != NULL) {
-                for (int d = 0; d < numDocs; d++) {
-                    curScore = counters_get(counter, d + 1);
-                    if (withinAND) {
-                        if (firstAND || curScore < minScore) {
-                            minScore = curScore; // Update minScore in AND logic
-                        }
-                    } else {
-                        scores[d] += curScore; // Add directly in OR logic
-                    }
-                }
+            if (line[end] == ' ' || line[end] == '\n') {    // if word has been found and is over break
+                break;
             }
         }
     }
-
-    // Handle the last AND segment if the query ends with AND logic
-    if (withinAND) {
-        for (int d = 0; d < numDocs; d++) {
-            scores[d] += minScore;
-        }
+    if (*pos >= strlen(line)) return NULL;  // is pos is out of range of the string return NULL
+    
+    char *token = mem_calloc((end - (*pos)) + 1, sizeof(char)); // malloc space for token/word
+    if (token == NULL) {    // ensure malloc was successful 
+        return NULL;
     }
-}
-
-
-/**************** num_docs_crawled() ****************/
-int num_docs_crawled(char* pageDirectory) {
-    int docID = 1;
-    char filePath[strlen(pageDirectory) + DOC_ID_MAX_LEN + 2]; // +1 for '/', +1 for '\0'
-
-    while (true) {
-        sprintf(filePath, "%s/%d", pageDirectory, docID);
-        FILE* fp = fopen(filePath, "r");
-        if (fp == NULL) break;
-        fclose(fp);
-        docID++;
-    }
-
-    return docID - 1;
+    strncpy(token, line + *pos, end - *pos);    // copy word found into token
+    *pos = end; // update value of pos to current word end
+    return token;   // return token
 }

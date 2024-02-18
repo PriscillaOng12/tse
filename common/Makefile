@@ -1,34 +1,39 @@
 # Chu Hui Ong, CS50 Winter 2024
 # Makefile for 'common' module: build the common.a lib by default
 # with a clean target that removes files produced by Make
- 
-# PROG = pagedir
-OBJS = pagedir.o index.o
-LIBS = ../libcs50/libcs50-given.a
+
+# object files, and the target library
+OBJS = pagedir.o word.o index.o
 LIB = common.a
-
-# uncomment the following to turn on verbose memory logging
-#TESTING=-DMEMTEST
-
-CFLAGS = -Wall -pedantic -std=c11 -ggdb $(TESTING) -I ../libcs50
+LIBS = ../libcs50/libcs50-given.a
+FLAGS = -lm
+INDEXCOEFF = -DINDEXCOEFF
+CFLAGS = -Wall -pedantic -std=c11 -ggdb $(TEST) $(FLAGS) -I../libcs50/
 CC = gcc
+TEST = 
 MAKE = make
 
-$(LIB): $(OBJS)
+# Build $(LIB) by archiving object files
+# (you will need to drop in copy of ????)
+$(LIB): $(OBJS) $(LIBS)
 	ar cr $(LIB) $(OBJS)
 
-# common.o: ../libcs50/libcs50-given.a pagedir.h
-# readline.o: ../libcs50/readlinep.h
-pagedir.o: pagedir.h
-index.o: index.h
+
+pagedir.o: pagedir.c pagedir.h
+index.o: index.c index.h word.o
+word.o: word.c word.h
+
+all: $(LIB)
+
+valgrind:
+	clear; make clean; make;
+	# $(VALGRIND)
+	
+.PHONY: all clean test valgrind
 
 
-.PHONY: test valgrind clean
-
-valgrind: $(PROG) 
-	valgrind ./$(PROG) 
-
+# clean up after our compilation
 clean:
 	rm -rf *.dSYM  # MacOS debugger info
-	rm -f *~ *.o
-	rm -f $(PROG)
+	rm -f core
+	rm -f $(LIB) *~ *.o

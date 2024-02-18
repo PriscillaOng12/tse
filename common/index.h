@@ -11,137 +11,99 @@
  *
  */
 
-#include <stdlib.h>
 #include "hashtable.h"
 #include "counters.h"
-#include "mem.h"
 
-/**************** global types ****************/
-typedef struct index index_t; // Opaque type hiding the implementation of index structure.
+#ifndef IndexCoeff
+#define IndexCoeff 825 // Default size for hashtable; can be overridden at compile time
+#endif
 
-/**************** index_new ****************/
-/*
- * Initializes a new index structure.
+/**
+ * @file index.h
+ * @brief Defines the interface for the index module in TSE.
  *
- * Inputs:
- *   size: the number of slots in the hashtable (must be greater than zero).
- *
- * Returns:
- *   A pointer to a newly allocated index structure, or NULL if there's an error in creation.
- *
- * Note:
- *   The caller is responsible for freeing this memory by calling index_delete().
+ * The index module provides an abstraction for a hashtable where each entry
+ * maps a unique word (string) to a counters set. Each counters set maps document
+ * IDs (integers) to the frequency (integer) of the word in that document.
+ * This structure is used for efficient word lookup and frequency counting,
+ * serving as an inverted index in a tiny search engine.
  */
-index_t* index_new(const int size);
 
-/**************** index_save ****************/
-/*
- * Writes the contents of the index to a file.
+// Type definition for index_t as a wrapper around hashtable_t for semantic clarity
+typedef struct hashtable index_t;
+
+/**
+ * @brief Initializes a new index with a specified number of slots.
  *
- * Inputs:
- *   index: a pointer to the index structure to be saved.
- *   indexFilename: the pathname of the file where the index should be saved.
- *
- * Note:
- *   If the file does not exist, it will be created. If it does exist, it will be overwritten.
- *   The index structure is not modified by this operation.
+ * @param slots The number of slots in the hashtable underlying the index.
+ *              Must be a positive number.
+ * @return A pointer to the newly created index, or NULL if memory allocation fails.
  */
-void index_save(index_t* index, char* indexFilename);
+index_t *indexInit(const int slots);
 
-
-/**************** index_load ****************/
-/*
- * Loads the contents of a file into an index structure.
+/**
+ * @brief Adds a word to the index or increments its frequency for a given document.
  *
- * Inputs:
- *   index: a pointer to an initially empty index structure where the file contents will be loaded.
- *   indexFilename: the pathname of the file from which to load the index.
+ * If the word is not already present in the index, it is added with an initial
+ * frequency of 1 for the specified document. If the word exists, its frequency
+ * for the given document ID is incremented.
  *
- * Note:
- *   The file should be in the format produced by index_save().
- *   If the file cannot be opened or read, the function will print an error message and return.
+ * @param index The index to update.
+ * @param word The word to add or update in the index.
+ * @param docID The document ID where the word is found.
+ * @return 0 on success, -1 on failure (e.g., invalid arguments or memory allocation failure).
  */
-void index_load(index_t* index, char* indexFilename);
+int indexAdd(index_t *index, const char *word, const int docID);
 
-
-/**************** index_delete ****************/
-/*
- * Frees all memory associated with the index.
+/**
+ * @brief Retrieves the counters set associated with a given word in the index.
  *
- * Inputs:
- *   index: a pointer to the index structure to be deleted.
- *
- * Note:
- *   After this operation, the pointer to the index should not be used again.
+ * @param index The index to search within.
+ * @param word The word to look up in the index.
+ * @return A pointer to the counters set associated with the word, or NULL if the word is not found.
  */
-void index_delete(index_t* index);
+counters_t *indexFind(index_t *index, const char *word);
 
-
-/**************** index_find ****************/
-/*
- * Finds and returns the counters set associated with a given word.
+/**
+ * @brief Updates the frequency of a word for a given document in the index.
  *
- * Inputs:
- *   index: a pointer to the index structure.
- *   key: the word to search for in the index.
+ * This function directly sets the frequency of the word for the specified document ID,
+ * overwriting any previous value.
  *
- * Returns:
- *   A pointer to the counters set associated with the word, or NULL if the word is not found.
- *
- * Note:
- *   The index structure is not modified by this operation.
+ * @param index The index to update.
+ * @param word The word whose frequency is to be updated.
+ * @param docID The document ID for which to set the frequency.
+ * @param freq The new frequency to set for the word in the specified document.
+ * @return 0 on success, -1 on failure (e.g., invalid arguments or memory allocation failure).
  */
-counters_t* index_find(index_t* index, char* key);
+int indexUpdate(index_t *index, const char *word, const int docID, const int freq);
 
-
-/**************** index_add ****************/
-/*
- * Adds a document ID to the index with a given word, or increments the count if it already exists.
+/**
+ * @brief Loads an index from a file.
  *
- * Inputs:
- *   index: a pointer to the index structure.
- *   key: the word to be added or updated in the index.
- *   docID: the document ID where the word was found.
+ * The file is expected to have a specific format where each line contains a word
+ * followed by a sequence of docID-count pairs representing the frequency of the word
+ * in each document.
  *
- * Returns:
- *   True if the operation was successful, or false otherwise.
- *
- * Note:
- *   This function adds the word to the index if it does not exist, or increments the count associated
- *   with the word and document ID if it does.
+ * @param fn The filename from which to load the index.
+ * @return A pointer to the loaded index, or NULL on failure (e.g., file not found or invalid format).
  */
-bool index_add(index_t* index, char* key, int docID);
+index_t *indexLoad(const char* fn);
 
-
-/**************** index_search ****************/
-/*
- * Searches the index for multiple words and calculates a relevance score for each document.
+/**
+ * @brief Frees all memory associated with an index and deletes it.
  *
- * Inputs:
- *   index: a pointer to the index structure.
- *   words: an array of words to search for.
- *   scores: an array of integers to store the relevance scores for each document.
- *   numDocs: the number of documents in the corpus.
- *   numWords: the number of words in the words array.
- *
- * Note:
- *   The function updates the scores array with the relevance scores for each document based on the search words.
+ * @param index The index to delete.
  */
-void index_search(index_t* index, char** words, int* scores, int numDocs, int numWords);
+void indexDelete(index_t *index);
 
-
-/**************** num_docs_crawled ****************/
-/*
- * Determines the number of documents that have been crawled and stored in a directory.
+/**
+ * @brief Saves an index to a file.
  *
- * Inputs:
- *   pageDirectory: the path to the directory containing crawled documents.
+ * The output file will contain one line per word, with each line listing the word
+ * followed by its docID-count pairs.
  *
- * Returns:
- *   The number of documents in the directory, assuming the directory follows the crawler format.
- *   Returns 0 if the directory does not follow the expected format.
- *
- * Note:
- *   This function assumes the directory exists and has been populated by the crawler.
+ * @param index The index to save.
+ * @param fn The filename to which the index should be saved.
  */
-int num_docs_crawled(char* pageDirectory);
+void indexSave(index_t *index, const char *fn);
